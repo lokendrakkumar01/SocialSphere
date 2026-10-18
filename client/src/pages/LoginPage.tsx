@@ -5,12 +5,8 @@ import {
   Lock,
   User,
   ArrowRight,
-  Shield,
-  Zap,
   Eye,
   EyeOff,
-  Flame,
-  Globe2,
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -42,12 +38,6 @@ export const LoginPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleQuickLogin = (user: string) => {
-    setLoginId(user);
-    setPassword('password123');
-    setError(null);
   };
 
   return (
@@ -178,41 +168,8 @@ export const LoginPage: React.FC = () => {
             </Button>
           </form>
 
-          {/* Quick Demo Fill Credentials */}
-          <div className="space-y-2.5 pt-5 mt-5 border-t border-slate-800/80">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-400" /> Demo Accounts (1-Click Fill):
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin')}
-                className="p-2.5 text-[11px] font-bold rounded-xl bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 border border-purple-800/50 transition-all text-center group"
-              >
-                <span className="block text-sm mb-0.5">👑</span>
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('alex_tech')}
-                className="p-2.5 text-[11px] font-bold rounded-xl bg-brand-950/40 hover:bg-brand-900/50 text-brand-300 border border-brand-800/50 transition-all text-center group"
-              >
-                <span className="block text-sm mb-0.5">💻</span>
-                Creator
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('elena_design')}
-                className="p-2.5 text-[11px] font-bold rounded-xl bg-indigo-950/40 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/50 transition-all text-center group"
-              >
-                <span className="block text-sm mb-0.5">🛡️</span>
-                Moderator
-              </button>
-            </div>
-          </div>
-
           {/* Sign Up Link */}
-          <p className="text-center text-xs text-slate-400 pt-5">
+          <p className="text-center text-xs text-slate-400 pt-6 mt-2">
             Don't have an account?{' '}
             <NavLink to="/register" className="text-brand-400 font-bold hover:underline">
               Create an account
