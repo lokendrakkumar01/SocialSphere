@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import authRoutes from './authRoutes';
 import userRoutes from './userRoutes';
 import postRoutes from './postRoutes';
@@ -24,7 +24,7 @@ router.use('/admin', adminRoutes);
 router.use('/uploads', uploadRoutes);
 
 // Health check endpoint
-router.get('/health', (_req, res) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
