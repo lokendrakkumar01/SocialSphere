@@ -339,7 +339,22 @@ export const AdminPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
+                  {/* Blue Tick Toggle */}
+                  <button
+                    onClick={() =>
+                      updateUserStatusMutation.mutate({ userId: u._id, isVerified: !u.isVerified } as any)
+                    }
+                    title={u.isVerified ? 'Remove Verified Badge' : 'Grant Verified Badge (Blue Tick)'}
+                    className={`p-1.5 rounded-lg border text-xs font-bold transition-colors ${
+                      u.isVerified
+                        ? 'bg-brand-100 dark:bg-brand-950/60 border-brand-400 text-brand-600 dark:text-brand-400'
+                        : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-400 hover:border-brand-400 hover:text-brand-500'
+                    }`}
+                  >
+                    ✓ {u.isVerified ? 'Verified' : 'Verify'}
+                  </button>
+
                   {/* Role Selector */}
                   <select
                     value={u.role}
@@ -348,9 +363,9 @@ export const AdminPage: React.FC = () => {
                     }
                     className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-lg px-2.5 py-1.5 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-purple-500 cursor-pointer font-semibold uppercase tracking-wider"
                   >
-                    <option value="user">User</option>
-                    <option value="moderator">Moderator</option>
-                    <option value="admin">Admin</option>
+                    <option value="user">👤 User</option>
+                    <option value="moderator">🛡️ Moderator</option>
+                    <option value="admin">👑 Admin</option>
                   </select>
 
                   {/* Suspend / Restore */}

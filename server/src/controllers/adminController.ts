@@ -78,7 +78,7 @@ export const getUsers = async (req: AuthenticatedRequest, res: Response): Promis
 export const updateUserStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const adminId = req.user!.userId;
   const { id } = req.params;
-  const { status, role } = req.body;
+  const { status, role, isVerified } = req.body;
 
   const targetUser = await User.findById(id);
   if (!targetUser) {
@@ -89,8 +89,9 @@ export const updateUserStatus = async (req: AuthenticatedRequest, res: Response)
   const previousStatus = targetUser.status;
   const previousRole = targetUser.role;
 
-  if (status) targetUser.status = status;
-  if (role) targetUser.role = role;
+  if (status !== undefined) targetUser.status = status;
+  if (role !== undefined) targetUser.role = role;
+  if (isVerified !== undefined) targetUser.isVerified = Boolean(isVerified);
 
   await targetUser.save();
 
@@ -105,6 +106,7 @@ export const updateUserStatus = async (req: AuthenticatedRequest, res: Response)
       toStatus: targetUser.status,
       fromRole: previousRole,
       toRole: targetUser.role,
+      isVerified: targetUser.isVerified,
     },
   });
 

@@ -9,6 +9,7 @@ export interface IMessage extends Document {
     type: 'image' | 'file';
   };
   readBy: mongoose.Types.ObjectId[];
+  isEdited: boolean;
   createdAt: Date;
 }
 
@@ -41,6 +42,10 @@ const MessageSchema = new Schema<IMessage>(
         ref: 'User',
       },
     ],
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: { createdAt: true, updatedAt: false },

@@ -203,3 +203,72 @@ export const markConversationAsRead = async (req: AuthenticatedRequest, res: Res
     message: 'Conversation marked as read',
   });
 };
+
+export const deleteMessage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { messageId } = req.params;
+  const forEveryone = req.body?.forEveryone === true;
+
+  const message = await Message.findById(messageId).populate('conversation');
+  if (!message) {
+    res.status(404).json({ success: false, message: 'Message not found' });
+    return;
+  }
+
+  const conv = message.conversation as any;
+  const isParticipant = conv.participants?.some((p: any) => p.toString() === userId);
+  if (!isParticipant) {
+    res.status(403).json({ success: false, message: 'Access denied' });
+    return;
+  }
+
+  const isOwner = message.sender.toString() === userId;
+
+  if (forEveryone && isOwner) {
+    await message.deleteOne();
+    emitToConversation(conv._id.toString(), 'message_deleted', { messageId });
+  } else {
+    // Delete for me — just remove from this user's view (soft approach: not stored, just removed from this user's returned messages)
+    // For simplicity we delete the message doc only if user is sender, otherwise no-op (just send OK)
+    if (isOwner) {
+      await message.deleteOne();
+      emitToConversation(conv._id.toString(), 'message_deleted', { messageId });
+    }
+  }
+
+  res.status(200).json({ success: true, message: 'Message deleted' });
+};
+
+export const editMessage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+  const { messageId } = req.params;
+  const { content } = req.body;
+
+  if (!content?.trim()) {
+    res.status(400).json({ success: false, message: 'Content is required' });
+    return;
+  }
+
+  const message = await Message.findById(messageId).populate('conversation');
+  if (!message) {
+    res.status(404).json({ success: false, message: 'Message not found' });
+    return;
+  }
+
+  if (message.sender.toString() !== userId) {
+    res.status(403).json({ success: false, message: 'You can only edit your own messages' });
+    return;
+  }
+
+  message.content = content.trim();
+  (message as any).isEdited = true;
+  await message.save();
+
+  const conv = message.conversation as any;
+  emitToConversation(conv._id.toString(), 'message_edited', {
+    messageId,
+    content: message.content,
+  });
+
+  res.status(200).json({ success: true, data: message });
+};

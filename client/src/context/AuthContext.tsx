@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  serverWaking: boolean;
   login: (login: string, password: string) => Promise<void>;
   register: (data: { username: string; email: string; password: string; displayName: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -14,46 +15,83 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
+/** Returns cached user from localStorage synchronously — instant load. */
+function getCachedUser(): User | null {
+  try {
     const saved = localStorage.getItem('socialsphere_user');
     return saved ? JSON.parse(saved) : null;
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  } catch {
+    return null;
+  }
+}
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(getCachedUser);
+  // If we have a cached user, don't show the loading spinner at all
+  const [isLoading, setIsLoading] = useState<boolean>(!getCachedUser());
+  const [serverWaking, setServerWaking] = useState<boolean>(false);
 
   useEffect(() => {
-    const fetchCurrentUser = async () => {
-      const token = localStorage.getItem('socialsphere_access_token');
-      if (!token) {
-        setUser(null);
-        setIsLoading(false);
-        return;
-      }
+    const token = localStorage.getItem('socialsphere_access_token');
+    if (!token) {
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        const response = await api.get('/auth/me');
-        if (response.data.success) {
+    let cancelled = false;
+
+    // Show "waking server" message only if there is no cached user
+    const wakingTimer = setTimeout(() => {
+      if (!cancelled && !getCachedUser()) setServerWaking(true);
+    }, 2000);
+
+    const controller = new AbortController();
+
+    // 12-second timeout — covers Render cold start (usually ~8s)
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    api
+      .get('/auth/me', { signal: controller.signal })
+      .then((response) => {
+        clearTimeout(timeoutId);
+        if (!cancelled && response.data.success) {
           setUser(response.data.data);
           localStorage.setItem('socialsphere_user', JSON.stringify(response.data.data));
         }
-      } catch {
-        setUser(null);
-        localStorage.removeItem('socialsphere_access_token');
-        localStorage.removeItem('socialsphere_refresh_token');
-        localStorage.removeItem('socialsphere_user');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      })
+      .catch(() => {
+        clearTimeout(timeoutId);
+        // On timeout/network error: if we had a cached user keep them logged in,
+        // otherwise clear tokens so login page shows
+        if (!cancelled) {
+          const cached = getCachedUser();
+          if (!cached) {
+            setUser(null);
+            localStorage.removeItem('socialsphere_access_token');
+            localStorage.removeItem('socialsphere_refresh_token');
+            localStorage.removeItem('socialsphere_user');
+          }
+          // If cached user exists, we keep them — they might just be offline / cold start
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+          setServerWaking(false);
+        }
+      });
 
-    fetchCurrentUser();
-
-    const handleLogoutEvent = () => {
-      setUser(null);
-    };
-
+    const handleLogoutEvent = () => setUser(null);
     window.addEventListener('auth:logout', handleLogoutEvent);
-    return () => window.removeEventListener('auth:logout', handleLogoutEvent);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(wakingTimer);
+      clearTimeout(timeoutId);
+      controller.abort();
+      window.removeEventListener('auth:logout', handleLogoutEvent);
+    };
   }, []);
 
   const login = async (loginId: string, password: string) => {
@@ -67,7 +105,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(loggedInUser);
   };
 
-  const register = async (data: { username: string; email: string; password: string; displayName: string }) => {
+  const register = async (data: {
+    username: string;
+    email: string;
+    password: string;
+    displayName: string;
+  }) => {
     const response = await api.post('/auth/register', data);
     const { user: registeredUser, accessToken, refreshToken } = response.data.data;
 
@@ -109,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated: !!user,
         isLoading,
+        serverWaking,
         login,
         register,
         logout,
